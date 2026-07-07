@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<title>ROOM Manager</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f5f7;color:#222;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{background:#111;color:#fff;padding:16px;padding-top:calc(16px + env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:end}
+header b{font-size:21px}header small{color:#bbb}.wrap{max-width:1100px;margin:auto;padding:12px}.card{background:#fff;border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+h2{font-size:17px;margin:0 0 12px;border-left:4px solid #111;padding-left:8px}h3{font-size:14px;margin:16px 0 8px;background:#f1f1f1;border-radius:9px;padding:8px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}label span{display:block;font-size:12px;color:#555;margin-bottom:4px}input,select,textarea{width:100%;border:1px solid #ddd;border-radius:10px;padding:11px;background:#fff;font-size:16px}textarea{min-height:80px}
+button{background:#111;color:#fff;border:0;border-radius:12px;padding:12px 16px;font-weight:bold;margin:6px 4px 0 0}.sub{background:#666}.danger{background:#b71c1c}.ghost{background:#eee;color:#222}
+.tabs{position:sticky;top:0;z-index:5;background:#fff;display:grid;grid-template-columns:repeat(6,1fr);border-bottom:1px solid #ddd}.tabs button{border-radius:0;background:#fff;color:#222;margin:0;padding:12px 1px;font-size:11px}.tabs button.on{background:#111;color:#fff}
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px}.kpis>div{background:#fff;border-radius:16px;padding:14px;box-shadow:0 2px 10px rgba(0,0,0,.06)}.kpis span{font-size:12px;color:#555}.kpis b{display:block;font-size:20px;margin-top:4px}
+.red{color:#c62828}.green{color:#16843c}.orange{color:#ef6c00}table{width:100%;border-collapse:collapse;background:#fff}th,td{border-bottom:1px solid #eee;padding:9px;text-align:left;font-size:14px}th{background:#222;color:#fff}.num{text-align:right}
+.list{padding:10px 0;border-bottom:1px solid #eee}.list b,.list span{display:block}.list span{font-size:12px;color:#666}.barwrap{height:250px;display:flex;align-items:end;justify-content:center;gap:36px;padding-top:20px}.baritem{text-align:center}.bar{width:58px;background:#111;border-radius:10px 10px 0 0;margin:auto}.baritem b,.baritem span{display:block;font-size:12px;margin-top:6px}
+.photos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}.photos img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:10px;border:1px solid #ddd}
+.login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}.login .card{width:100%;max-width:390px}.notice{font-size:12px;color:#666;line-height:1.5}.badge{display:inline-block;background:#eee;border-radius:999px;padding:4px 8px;font-size:12px;margin:2px}
+@media(max-width:560px){.grid{grid-template-columns:1fr}.tabs{grid-template-columns:repeat(3,1fr)}.kpis b{font-size:18px}}
+@media print{header,.tabs,.no-print,button{display:none!important}body{background:#fff}.card{box-shadow:none}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const yen=n=>Math.round(Number(n||0)).toLocaleString("ja-JP")+"円";
+const num=v=>Number(v||0);
+const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+const load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k)) ?? d}catch(e){return d}};
+let tab="dash";
+let cases=load("room_cases_v1",[]);
+let current=load("room_current_v1",{
+ id:"ROOM-0001",name:"サンプル現場",client:"クレス不動産",manager:"管理者",status:"見積中",
+ area:35.5,sales:4000000,profitManual:"",rank:"標準フルリノベ",maker:"LIXIL",
+ ub:"1216",kitchen:"1800",dishwasher:"なし",vanity:"750",toilet:"アメージュ",heater:"なし",
+ doors:4,shoeBox:"あり",closets:1,ac:2,partitionsAdd:1,partitionsRemove:1,outerFukashi:20,ceilingFukashi:20,floorRaise:35.5,
+ plumbing:"あり",plumbingPoints:2,downlights:8,outlets:8,switches:4,panel:"なし",
+ clothArea:180,floorArea:35.5,cfArea:5,baseboardM:60,delivery:30000,parking:20000,misc:40000,reserveRate:3,memo:"",photos:[]
+});
+let master=load("room_master_v1",{wholesaler:"渡辺パイプ",flooringCaseM2:3.3,particleM2:.91,pbM2:1.62,plywoodM2:1.62,prices:{particle:2744,leg:185,flooringCase:9500,wood:650,plywood:2300,board:650,clothM2:330,baseboardM:350,cfM2:1600}});
+const labels={id:"案件番号",name:"物件名",client:"取引先",manager:"担当",status:"状態",area:"面積㎡",sales:"売価税込",profitManual:"粗利手入力",rank:"工事ランク",maker:"メーカー",ub:"UBサイズ",kitchen:"キッチンサイズ",dishwasher:"食洗機",vanity:"洗面サイズ",toilet:"トイレ",heater:"給湯器/温水器",doors:"建具枚数",shoeBox:"玄関収納",closets:"クローゼット数",ac:"エアコン台数",partitionsAdd:"間仕切り増設",partitionsRemove:"間仕切り撤去",outerFukashi:"外周ふかしm",ceilingFukashi:"天井ふかし㎡",floorRaise:"床上げ㎡",plumbing:"給排水移設",plumbingPoints:"水回り移設点数",downlights:"ダウンライト数",outlets:"コンセント増設",switches:"スイッチ増設",panel:"分電盤交換",clothArea:"クロス㎡",floorArea:"床㎡",cfArea:"CF㎡",baseboardM:"巾木m",delivery:"搬入費",parking:"駐車場・交通費",misc:"養生・雑工事",reserveRate:"予備費率%",memo:"メモ"};
+
+function mat(c=current,m=master){
+ const area=num(c.area), floorRaise=num(c.floorRaise)||area, floor=num(c.floorArea)||area, wall=num(c.clothArea)||Math.ceil(area*5.2);
+ return {
+  particle:Math.ceil(floorRaise/m.particleM2),
+  legs:Math.ceil(floorRaise*6),
+  flooringCases:Math.ceil(floor/m.flooringCaseM2),
+  boards:Math.ceil((wall*.45+num(c.ceilingFukashi)*1.1+num(c.outerFukashi)*2.4)/m.pbM2),
+  plywood:Math.ceil((area*.08+num(c.partitionsAdd)*1.5)/m.plywoodM2),
+  wood:Math.ceil(num(c.outerFukashi)*3+num(c.ceilingFukashi)*2.5+num(c.partitionsAdd)*12+area*.4),
+  cloth:Math.ceil(wall),baseboard:Math.ceil(num(c.baseboardM)||area*1.8)
+ };
+}
+function calc(c=current,m=master){
+ const mt=mat(c,m), makerAdd=c.maker==="TOTO"?20000:c.maker==="Panasonic"?35000:c.maker==="Takara Standard"?45000:c.maker==="AICA"?30000:0;
+ const ub={1015:230000,1116:245000,1216:260000,1317:310000,1418:350000}[c.ub]||260000;
+ const kit={1650:100000,1800:115000,2100:145000,2400:180000,2550:210000}[c.kitchen]||115000;
+ const vanity={600:55000,750:65000,900:85000}[c.vanity]||65000;
+ const toilet=c.toilet==="アメージュ"?70000:c.toilet==="ベーシア"?65000:78000;
+ const heater=c.heater==="給湯器"?90000:c.heater==="電気温水器"?160000:0;
+ const equipment=ub+kit+makerAdd+vanity+toilet+heater+(c.dishwasher==="あり"?80000:0)+num(c.doors)*30000+(c.shoeBox==="あり"?45000:0)+num(c.closets)*35000+num(c.ac)*55000;
+ const materialCost=mt.particle*m.prices.particle+mt.legs*m.prices.leg+mt.flooringCases*m.prices.flooringCase+mt.wood*m.prices.wood+mt.plywood*m.prices.plywood+mt.boards*m.prices.board+mt.cloth*m.prices.clothM2+mt.baseboard*m.prices.baseboardM+num(c.cfArea)*m.prices.cfM2;
+ const area=num(c.area), rank=c.rank==="表層"?.65:c.rank==="造作・配管多め"?1.18:1;
+ const demolition=(c.rank==="表層"?area*6000:c.rank==="造作・配管多め"?area*12000:area*8500)+num(c.partitionsRemove)*25000;
+ const carpentry=area*4500*rank+num(c.partitionsAdd)*60000+num(c.outerFukashi)*3500+num(c.ceilingFukashi)*3500+num(c.floorRaise)*2500;
+ const electric=120000*rank+num(c.downlights)*5500+num(c.outlets)*4500+num(c.switches)*3500+(c.panel==="あり"?60000:0);
+ const plumbing=c.plumbing==="あり"?160000+num(c.plumbingPoints)*45000:120000;
+ const assembly=60000+30000+15000+num(c.ac)*25000;
+ const finish=num(c.clothArea)*850+num(c.floorArea)*3100+num(c.cfArea)*2200+num(c.baseboardM)*500;
+ const expense=num(c.delivery)+num(c.parking)+num(c.misc)+20000;
+ const subtotal=equipment+materialCost+demolition+carpentry+electric+plumbing+assembly+finish+expense;
+ const reserve=subtotal*num(c.reserveRate)/100,totalCost=subtotal+reserve,netSales=num(c.sales)/1.1,calcProfit=netSales-totalCost,profit=c.profitManual!==""?num(c.profitManual):calcProfit,margin=netSales?profit/netSales:0;
+ return {mt,equipment,materialCost,demolition,carpentry,electric,plumbing,assembly,finish,expense,reserve,totalCost,netSales,profit,margin};
+}
+function login(){let id=document.getElementById("loginId").value,pw=document.getElementById("loginPw").value;if(id==="room"&&pw==="1234"){localStorage.setItem("room_login","1");render()}else alert("IDかパスワードが違います。")}
+function logout(){localStorage.removeItem("room_login");render()}
+function update(k,v){current[k]=v;save("room_current_v1",current);render()}
+function input(k,type="text"){return `<label><span>${labels[k]||k}</span><input type="${type}" value="${current[k]??""}" oninput="update('${k}',this.value)"></label>`}
+function textarea(k){return `<label style="grid-column:1/-1"><span>${labels[k]||k}</span><textarea oninput="update('${k}',this.value)">${current[k]??""}</textarea></label>`}
+function select(k,opts){return `<label><span>${labels[k]||k}</span><select onchange="update('${k}',this.value)">${opts.map(o=>`<option ${String(current[k])===String(o)?"selected":""}>${o}</option>`).join("")}</select></label>`}
+function saveCase(){const r=calc(), saved={...current,savedAt:new Date().toLocaleString("ja-JP"),savedProfit:r.profit,savedMargin:r.margin,savedCost:r.totalCost,savedSales:num(current.sales)};cases=[saved,...cases.filter(x=>x.id!==saved.id)];save("room_cases_v1",cases);alert("案件保存しました");render()}
+function deleteCase(id){if(confirm("削除しますか？")){cases=cases.filter(c=>c.id!==id);save("room_cases_v1",cases);render()}}
+function loadCase(id){const c=cases.find(x=>x.id===id);if(c){current={...c};save("room_current_v1",current);tab="case";render()}}
+function photo(input){[...input.files].slice(0,20).forEach(f=>{const fr=new FileReader();fr.onload=e=>{current.photos=[...(current.photos||[]),{name:f.name,data:e.target.result}];save("room_current_v1",current);render()};fr.readAsDataURL(f)})}
+function removePhoto(i){current.photos=current.photos.filter((_,idx)=>idx!==i);save("room_current_v1",current);render()}
+function updateMaster(k,v){master.prices[k]=num(v);save("room_master_v1",master);render()}
+function updateMasterTop(k,v){master[k]=num(v);save("room_master_v1",master);render()}
+function exportData(){const blob=new Blob([JSON.stringify({cases,master},null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="ROOM_Manager_backup.json";a.click()}
+function dash(){const sales=cases.reduce((s,c)=>s+num(c.savedSales),0),profit=cases.reduce((s,c)=>s+num(c.savedProfit),0),admin=cases.filter(c=>c.manager==="管理者").reduce((s,c)=>s+num(c.savedProfit),0),emp=cases.filter(c=>c.manager==="従業員").reduce((s,c)=>s+num(c.savedProfit),0),max=Math.max(1,admin,emp);
+ return `<div class="kpis"><div><span>今月売上</span><b>${yen(sales)}</b></div><div><span>今月粗利</span><b>${yen(profit)}</b></div><div><span>工事中</span><b>${cases.filter(c=>c.status==="工事中").length}件</b></div><div><span>完工</span><b>${cases.filter(c=>c.status==="完工").length}件</b></div></div><div class="card"><h2>担当別 今月粗利</h2><div class="barwrap"><div class="baritem"><div class="bar" style="height:${Math.max(8,admin/max*190)}px"></div><b>管理者</b><span>${yen(admin)}</span></div><div class="baritem"><div class="bar" style="height:${Math.max(8,emp/max*190)}px"></div><b>従業員</b><span>${yen(emp)}</span></div></div></div><div class="card"><h2>案件一覧</h2>${cases.length?cases.map(c=>`<div class="list"><b>${c.name}</b><span>${c.manager} / ${c.status} / 粗利 ${yen(c.savedProfit)} / ${(num(c.savedMargin)*100).toFixed(1)}%</span><button class="sub" onclick="loadCase('${c.id}')">開く</button><button class="danger" onclick="deleteCase('${c.id}')">削除</button></div>`).join(""):"<p class='notice'>まだ案件がありません。</p>"}</div>`}
+function casePage(){return `<div class="card"><h2>案件管理</h2><div class="grid">${input("id")}${input("name")}${input("client")}${select("manager",["管理者","従業員"])}${select("status",["見積中","工事中","完工","請求済","入金済"])}${input("area","number")}${input("sales","number")}${input("profitManual","number")}${textarea("memo")}</div><h3>完工写真</h3><input type="file" accept="image/*" multiple onchange="photo(this)"><div class="photos">${(current.photos||[]).map((p,i)=>`<div><img src="${p.data}"><button class="danger" onclick="removePhoto(${i})">削除</button></div>`).join("")}</div><button onclick="saveCase()">案件保存</button></div>`}
+function estimate(){const r=calc();return `<div class="kpis"><div><span>税抜売上</span><b>${yen(r.netSales)}</b></div><div><span>総原価</span><b>${yen(r.totalCost)}</b></div><div><span>粗利</span><b>${yen(r.profit)}</b></div><div><span>粗利率</span><b class="${r.margin<.25?"red":r.margin>=.3?"green":"orange"}">${(r.margin*100).toFixed(1)}%</b></div></div><div class="card"><h2>見積入力</h2><div class="grid">${select("rank",["表層","標準フルリノベ","造作・配管多め"])}${select("maker",["LIXIL","TOTO","Panasonic","Takara Standard","AICA"])}${select("ub",["1015","1116","1216","1317","1418"])}${select("kitchen",["1650","1800","2100","2400","2550"])}${select("dishwasher",["なし","あり"])}${select("vanity",["600","750","900"])}${select("toilet",["アメージュ","ベーシア","ピュアレスト"])}${select("heater",["なし","給湯器","電気温水器"])}${input("doors","number")}${select("shoeBox",["なし","あり"])}${input("closets","number")}${input("ac","number")}${input("partitionsAdd","number")}${input("partitionsRemove","number")}${input("outerFukashi","number")}${input("ceilingFukashi","number")}${input("floorRaise","number")}${select("plumbing",["なし","あり"])}${input("plumbingPoints","number")}${input("downlights","number")}${input("outlets","number")}${input("switches","number")}${select("panel",["なし","あり"])}${input("clothArea","number")}${input("floorArea","number")}${input("cfArea","number")}${input("baseboardM","number")}${input("delivery","number")}${input("parking","number")}${input("misc","number")}${input("reserveRate","number")}</div><button onclick="saveCase()">案件保存</button></div><div class="card"><h2>AI材料数量 概算</h2><table><tr><td>パーチクル材</td><td class="num">${r.mt.particle}枚</td></tr><tr><td>足</td><td class="num">${r.mt.legs}本</td></tr><tr><td>フローリング材</td><td class="num">${r.mt.flooringCases}ケース</td></tr><tr><td>木角材</td><td class="num">${r.mt.wood}本</td></tr><tr><td>コンパネ</td><td class="num">${r.mt.plywood}枚</td></tr><tr><td>ボード</td><td class="num">${r.mt.boards}枚</td></tr><tr><td>クロス</td><td class="num">${r.mt.cloth}㎡</td></tr><tr><td>巾木</td><td class="num">${r.mt.baseboard}m</td></tr></table></div><div class="card"><h2>原価内訳</h2><table><tr><th>項目</th><th class="num">金額</th></tr>${[["設備",r.equipment],["材料",r.materialCost],["内装解体",r.demolition],["木工事",r.carpentry],["電気工事",r.electric],["給排水設備",r.plumbing],["組立・取付",r.assembly],["仕上げ",r.finish],["経費",r.expense],["予備費",r.reserve],["総原価",r.totalCost]].map(x=>`<tr><td>${x[0]}</td><td class="num">${yen(x[1])}</td></tr>`).join("")}</table></div>`}
+function masterPage(){return `<div class="card"><h2>単価マスター</h2><p><span class="badge">問屋：渡辺パイプのみ</span></p><p class="notice">メーカー：LIXIL / TOTO / Panasonic / Takara Standard / AICA</p><div class="grid"><label><span>フローリング1ケース施工㎡</span><input type="number" step="0.1" value="${master.flooringCaseM2}" oninput="updateMasterTop('flooringCaseM2',this.value)"></label><label><span>パーチ1枚施工㎡</span><input type="number" step="0.01" value="${master.particleM2}" oninput="updateMasterTop('particleM2',this.value)"></label>${Object.entries({particle:"パーチクル材 1枚",leg:"足 1本",flooringCase:"フローリング 1ケース",wood:"木角材 1本",plywood:"コンパネ 1枚",board:"ボード 1枚",clothM2:"クロス材料 ㎡",baseboardM:"巾木 m",cfM2:"CF ㎡"}).map(([k,v])=>`<label><span>${v}</span><input type="number" value="${master.prices[k]}" oninput="updateMaster('${k}',this.value)"></label>`).join("")}</div><button onclick="exportData()">データ出力</button></div>`}
+function help(){return `<div class="card"><h2>使い方</h2><p class="notice">デモログイン：ID <b>room</b> / パスワード <b>1234</b></p><p class="notice">この版は端末のブラウザ内に保存されます。社員共有・本格ログインは次のFirebase版で追加します。</p></div>`}
+function render(){const app=document.getElementById("app");if(!localStorage.getItem("room_login")){app.innerHTML=`<div class="login"><div class="card"><h2>ROOM Manager</h2><label><span>ID</span><input id="loginId" value="room"></label><label><span>パスワード</span><input id="loginPw" type="password" value="1234"></label><button onclick="login()">ログイン</button><p class="notice">デモ版：ID room / PW 1234</p></div></div>`;return}const body=tab==="dash"?dash():tab==="case"?casePage():tab==="estimate"?estimate():tab==="master"?masterPage():help();app.innerHTML=`<header><b>ROOM Manager</b><small onclick="logout()">ログアウト</small></header><div class="tabs">${[["dash","ダッシュ"],["case","案件"],["estimate","見積"],["master","単価"],["help","使い方"]].map(([k,v])=>`<button class="${tab===k?"on":""}" onclick="tab='${k}';render()">${v}</button>`).join("")}</div><div class="wrap">${body}</div>`}
+render();
+</script>
+</body>
+</html>
