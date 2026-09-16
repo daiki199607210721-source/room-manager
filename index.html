@@ -100,7 +100,13 @@ function masterPage(){return `<div class="card"><h2>単価マスター</h2><p><s
 function help(){return `<div class="card"><h2>使い方</h2><p class="notice">デモログイン：ID <b>room</b> / パスワード <b>1234</b></p><p class="notice">この版は端末のブラウザ内に保存されます。社員共有・本格ログインは次のFirebase版で追加します。</p><p class="notice">ChatGPTの会話をClaudeに渡すときは「AI取込」タブから、ChatGPTのデータエクスポート（ZIP または conversations.json）を変換します。メールアドレスだけではChatGPTに入れません。</p></div>`}
 let importState=load("room_claude_import_v1",{conversations:[],markdown:"",digest:"",fileName:""});
 function saveImport(){save("room_claude_import_v1",{fileName:importState.fileName,digest:importState.digest,count:(importState.conversations||[]).length,savedAt:new Date().toLocaleString("ja-JP")})}
-async function onImportFile(input){
+async function loadSample(){
+  const res=await fetch("fixtures/sample-chatgpt-conversations.json");
+  if(!res.ok){alert("サンプルファイルを読めませんでした。");return}
+  const blob=await res.blob();
+  await onImportFile({files:[new File([blob],"conversations.json",{type:"application/json"})]}, true);
+}
+async function onImportFile(input, quiet){
   const file=input.files&&input.files[0];
   if(!file)return;
   try{
@@ -108,7 +114,7 @@ async function onImportFile(input){
     if(!convos.length)throw new Error("会話が見つかりませんでした。");
     importState={conversations:convos,markdown:ChatGPTToClaude.conversationsToMarkdown(convos),digest:ChatGPTToClaude.conversationsDigest(convos),fileName:file.name};
     saveImport();
-    alert(convos.length+"件の会話を取り込みました。");
+    if(!quiet) alert(convos.length+"件の会話を取り込みました。");
     render();
   }catch(err){
     alert("取り込みに失敗しました。"+err.message);
@@ -136,6 +142,7 @@ function importPage(){
 </ol>
 <div class="drop" id="dropzone" onclick="document.getElementById('importFile').click()">ここに ZIP または conversations.json をドロップ<br><span class="notice">クリックしてファイルを選ぶ</span></div>
 <input id="importFile" type="file" accept=".json,.zip,application/json,application/zip" style="display:none" onchange="onImportFile(this)">
+<button class="ghost" onclick="loadSample()">サンプルで試す</button>
 </div>
 <div class="card"><h2>取り込み結果</h2>
 ${convos.length?`<p><span class="badge">${importState.fileName||"取り込み済み"}</span><span class="badge">${convos.length}件</span>${saved&&saved.savedAt?`<span class="badge">${saved.savedAt}</span>`:""}</p>
