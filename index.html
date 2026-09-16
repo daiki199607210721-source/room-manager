@@ -18,12 +18,15 @@ button{background:#111;color:#fff;border:0;border-radius:12px;padding:12px 16px;
 .list{padding:10px 0;border-bottom:1px solid #eee}.list b,.list span{display:block}.list span{font-size:12px;color:#666}.barwrap{height:250px;display:flex;align-items:end;justify-content:center;gap:36px;padding-top:20px}.baritem{text-align:center}.bar{width:58px;background:#111;border-radius:10px 10px 0 0;margin:auto}.baritem b,.baritem span{display:block;font-size:12px;margin-top:6px}
 .photos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}.photos img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:10px;border:1px solid #ddd}
 .login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}.login .card{width:100%;max-width:390px}.notice{font-size:12px;color:#666;line-height:1.5}.badge{display:inline-block;background:#eee;border-radius:999px;padding:4px 8px;font-size:12px;margin:2px}
+.drop{border:2px dashed #bbb;border-radius:14px;padding:28px 16px;text-align:center;background:#fafafa;margin:8px 0}.drop.on{border-color:#111;background:#eee}
+.chatrow{padding:10px 0;border-bottom:1px solid #eee}.chatrow b,.chatrow span{display:block}.preview{max-height:280px;overflow:auto;background:#f7f7f7;border-radius:10px;padding:12px;font-size:12px;white-space:pre-wrap}
 @media(max-width:560px){.grid{grid-template-columns:1fr}.tabs{grid-template-columns:repeat(3,1fr)}.kpis b{font-size:18px}}
 @media print{header,.tabs,.no-print,button{display:none!important}body{background:#fff}.card{box-shadow:none}}
 </style>
 </head>
 <body>
 <div id="app"></div>
+<script src="chatgpt-to-claude.js"></script>
 <script>
 const yen=n=>Math.round(Number(n||0)).toLocaleString("ja-JP")+"円";
 const num=v=>Number(v||0);
@@ -94,8 +97,64 @@ function dash(){const sales=cases.reduce((s,c)=>s+num(c.savedSales),0),profit=ca
 function casePage(){return `<div class="card"><h2>案件管理</h2><div class="grid">${input("id")}${input("name")}${input("client")}${select("manager",["管理者","従業員"])}${select("status",["見積中","工事中","完工","請求済","入金済"])}${input("area","number")}${input("sales","number")}${input("profitManual","number")}${textarea("memo")}</div><h3>完工写真</h3><input type="file" accept="image/*" multiple onchange="photo(this)"><div class="photos">${(current.photos||[]).map((p,i)=>`<div><img src="${p.data}"><button class="danger" onclick="removePhoto(${i})">削除</button></div>`).join("")}</div><button onclick="saveCase()">案件保存</button></div>`}
 function estimate(){const r=calc();return `<div class="kpis"><div><span>税抜売上</span><b>${yen(r.netSales)}</b></div><div><span>総原価</span><b>${yen(r.totalCost)}</b></div><div><span>粗利</span><b>${yen(r.profit)}</b></div><div><span>粗利率</span><b class="${r.margin<.25?"red":r.margin>=.3?"green":"orange"}">${(r.margin*100).toFixed(1)}%</b></div></div><div class="card"><h2>見積入力</h2><div class="grid">${select("rank",["表層","標準フルリノベ","造作・配管多め"])}${select("maker",["LIXIL","TOTO","Panasonic","Takara Standard","AICA"])}${select("ub",["1015","1116","1216","1317","1418"])}${select("kitchen",["1650","1800","2100","2400","2550"])}${select("dishwasher",["なし","あり"])}${select("vanity",["600","750","900"])}${select("toilet",["アメージュ","ベーシア","ピュアレスト"])}${select("heater",["なし","給湯器","電気温水器"])}${input("doors","number")}${select("shoeBox",["なし","あり"])}${input("closets","number")}${input("ac","number")}${input("partitionsAdd","number")}${input("partitionsRemove","number")}${input("outerFukashi","number")}${input("ceilingFukashi","number")}${input("floorRaise","number")}${select("plumbing",["なし","あり"])}${input("plumbingPoints","number")}${input("downlights","number")}${input("outlets","number")}${input("switches","number")}${select("panel",["なし","あり"])}${input("clothArea","number")}${input("floorArea","number")}${input("cfArea","number")}${input("baseboardM","number")}${input("delivery","number")}${input("parking","number")}${input("misc","number")}${input("reserveRate","number")}</div><button onclick="saveCase()">案件保存</button></div><div class="card"><h2>AI材料数量 概算</h2><table><tr><td>パーチクル材</td><td class="num">${r.mt.particle}枚</td></tr><tr><td>足</td><td class="num">${r.mt.legs}本</td></tr><tr><td>フローリング材</td><td class="num">${r.mt.flooringCases}ケース</td></tr><tr><td>木角材</td><td class="num">${r.mt.wood}本</td></tr><tr><td>コンパネ</td><td class="num">${r.mt.plywood}枚</td></tr><tr><td>ボード</td><td class="num">${r.mt.boards}枚</td></tr><tr><td>クロス</td><td class="num">${r.mt.cloth}㎡</td></tr><tr><td>巾木</td><td class="num">${r.mt.baseboard}m</td></tr></table></div><div class="card"><h2>原価内訳</h2><table><tr><th>項目</th><th class="num">金額</th></tr>${[["設備",r.equipment],["材料",r.materialCost],["内装解体",r.demolition],["木工事",r.carpentry],["電気工事",r.electric],["給排水設備",r.plumbing],["組立・取付",r.assembly],["仕上げ",r.finish],["経費",r.expense],["予備費",r.reserve],["総原価",r.totalCost]].map(x=>`<tr><td>${x[0]}</td><td class="num">${yen(x[1])}</td></tr>`).join("")}</table></div>`}
 function masterPage(){return `<div class="card"><h2>単価マスター</h2><p><span class="badge">問屋：渡辺パイプのみ</span></p><p class="notice">メーカー：LIXIL / TOTO / Panasonic / Takara Standard / AICA</p><div class="grid"><label><span>フローリング1ケース施工㎡</span><input type="number" step="0.1" value="${master.flooringCaseM2}" oninput="updateMasterTop('flooringCaseM2',this.value)"></label><label><span>パーチ1枚施工㎡</span><input type="number" step="0.01" value="${master.particleM2}" oninput="updateMasterTop('particleM2',this.value)"></label>${Object.entries({particle:"パーチクル材 1枚",leg:"足 1本",flooringCase:"フローリング 1ケース",wood:"木角材 1本",plywood:"コンパネ 1枚",board:"ボード 1枚",clothM2:"クロス材料 ㎡",baseboardM:"巾木 m",cfM2:"CF ㎡"}).map(([k,v])=>`<label><span>${v}</span><input type="number" value="${master.prices[k]}" oninput="updateMaster('${k}',this.value)"></label>`).join("")}</div><button onclick="exportData()">データ出力</button></div>`}
-function help(){return `<div class="card"><h2>使い方</h2><p class="notice">デモログイン：ID <b>room</b> / パスワード <b>1234</b></p><p class="notice">この版は端末のブラウザ内に保存されます。社員共有・本格ログインは次のFirebase版で追加します。</p></div>`}
-function render(){const app=document.getElementById("app");if(!localStorage.getItem("room_login")){app.innerHTML=`<div class="login"><div class="card"><h2>ROOM Manager</h2><label><span>ID</span><input id="loginId" value="room"></label><label><span>パスワード</span><input id="loginPw" type="password" value="1234"></label><button onclick="login()">ログイン</button><p class="notice">デモ版：ID room / PW 1234</p></div></div>`;return}const body=tab==="dash"?dash():tab==="case"?casePage():tab==="estimate"?estimate():tab==="master"?masterPage():help();app.innerHTML=`<header><b>ROOM Manager</b><small onclick="logout()">ログアウト</small></header><div class="tabs">${[["dash","ダッシュ"],["case","案件"],["estimate","見積"],["master","単価"],["help","使い方"]].map(([k,v])=>`<button class="${tab===k?"on":""}" onclick="tab='${k}';render()">${v}</button>`).join("")}</div><div class="wrap">${body}</div>`}
+function help(){return `<div class="card"><h2>使い方</h2><p class="notice">デモログイン：ID <b>room</b> / パスワード <b>1234</b></p><p class="notice">この版は端末のブラウザ内に保存されます。社員共有・本格ログインは次のFirebase版で追加します。</p><p class="notice">ChatGPTの会話をClaudeに渡すときは「AI取込」タブから、ChatGPTのデータエクスポート（ZIP または conversations.json）を変換します。メールアドレスだけではChatGPTに入れません。</p></div>`}
+let importState=load("room_claude_import_v1",{conversations:[],markdown:"",digest:"",fileName:""});
+function saveImport(){save("room_claude_import_v1",{fileName:importState.fileName,digest:importState.digest,count:(importState.conversations||[]).length,savedAt:new Date().toLocaleString("ja-JP")})}
+async function loadSample(){
+  const res=await fetch("fixtures/sample-chatgpt-conversations.json");
+  if(!res.ok){alert("サンプルファイルを読めませんでした。");return}
+  const blob=await res.blob();
+  await onImportFile({files:[new File([blob],"conversations.json",{type:"application/json"})]}, true);
+}
+async function onImportFile(input, quiet){
+  const file=input.files&&input.files[0];
+  if(!file)return;
+  try{
+    const convos=await ChatGPTToClaude.parseFile(file);
+    if(!convos.length)throw new Error("会話が見つかりませんでした。");
+    importState={conversations:convos,markdown:ChatGPTToClaude.conversationsToMarkdown(convos),digest:ChatGPTToClaude.conversationsDigest(convos),fileName:file.name};
+    saveImport();
+    if(!quiet) alert(convos.length+"件の会話を取り込みました。");
+    render();
+  }catch(err){
+    alert("取り込みに失敗しました。"+err.message);
+  }
+}
+function downloadClaude(kind){
+  if(!importState.markdown){alert("先にファイルを取り込んでください。");return}
+  const text=kind==="digest"?importState.digest:importState.markdown;
+  const name=kind==="digest"?"claude_chatgpt_digest.md":"claude_chatgpt_import.md";
+  const blob=new Blob([text],{type:"text/markdown;charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();
+}
+function clearImport(){importState={conversations:[],markdown:"",digest:"",fileName:""};localStorage.removeItem("room_claude_import_v1");render()}
+function importPage(){
+  const convos=importState.conversations||[];
+  const saved=load("room_claude_import_v1",null);
+  return `<div class="card"><h2>ChatGPT → Claude 取り込み</h2>
+<p class="notice">ChatGPTのアカウントにはメールアドレスだけでは入れません。ChatGPTから書き出したデータ（ZIP または <b>conversations.json</b>）をここに置くと、Claude / Cursor 用のMarkdownに変換します。</p>
+<ol class="notice">
+<li>ChatGPTにログインする</li>
+<li>プロフィール → 設定 → データコントロール → データをエクスポート</li>
+<li>届いたメールのZIPを保存する（数時間〜数日かかることがあります）</li>
+<li>そのZIP、または中の conversations.json を下にドロップする</li>
+<li>変換したMarkdownをダウンロードし、Claude.aiのプロジェクトへ追加する。Cursorならこのリポジトリに置く</li>
+</ol>
+<div class="drop" id="dropzone" onclick="document.getElementById('importFile').click()">ここに ZIP または conversations.json をドロップ<br><span class="notice">クリックしてファイルを選ぶ</span></div>
+<input id="importFile" type="file" accept=".json,.zip,application/json,application/zip" style="display:none" onchange="onImportFile(this)">
+<button class="ghost" onclick="loadSample()">サンプルで試す</button>
+</div>
+<div class="card"><h2>取り込み結果</h2>
+${convos.length?`<p><span class="badge">${importState.fileName||"取り込み済み"}</span><span class="badge">${convos.length}件</span>${saved&&saved.savedAt?`<span class="badge">${saved.savedAt}</span>`:""}</p>
+${convos.map(c=>`<div class="chatrow"><b>${c.title}</b><span>${c.messageCount}メッセージ</span></div>`).join("")}
+<h3>Claude用プレビュー（先頭）</h3>
+<div class="preview">${(importState.markdown||"").slice(0,2500).replace(/[<>&]/g,s=>({"<":"&lt;",">":"&gt;","&":"&amp;"}[s]))}${(importState.markdown||"").length>2500?"\n…":""}</div>
+<button onclick="downloadClaude('full')">全文Markdownを保存</button>
+<button class="sub" onclick="downloadClaude('digest')">ダイジェストを保存</button>
+<button class="danger" onclick="clearImport()">取り込みを消す</button>`:`<p class="notice">まだファイルがありません。上からChatGPTのエクスポートを選んでください。</p>${saved&&saved.count?`<p class="notice">前回の要約: ${saved.count}件（${saved.savedAt}）。全文を再表示するには同じファイルをもう一度取り込んでください。</p>`:""}`}
+</div>`}
+function render(){const app=document.getElementById("app");if(!localStorage.getItem("room_login")){app.innerHTML=`<div class="login"><div class="card"><h2>ROOM Manager</h2><label><span>ID</span><input id="loginId" value="room"></label><label><span>パスワード</span><input id="loginPw" type="password" value="1234"></label><button onclick="login()">ログイン</button><p class="notice">デモ版：ID room / PW 1234</p></div></div>`;return}const body=tab==="dash"?dash():tab==="case"?casePage():tab==="estimate"?estimate():tab==="master"?masterPage():tab==="import"?importPage():help();app.innerHTML=`<header><b>ROOM Manager</b><small onclick="logout()">ログアウト</small></header><div class="tabs">${[["dash","ダッシュ"],["case","案件"],["estimate","見積"],["master","単価"],["import","AI取込"],["help","使い方"]].map(([k,v])=>`<button class="${tab===k?"on":""}" onclick="tab='${k}';render()">${v}</button>`).join("")}</div><div class="wrap">${body}</div>`;if(tab==="import")bindDrop()}
+function bindDrop(){const z=document.getElementById("dropzone");if(!z)return;["dragenter","dragover"].forEach(ev=>z.addEventListener(ev,e=>{e.preventDefault();z.classList.add("on")}));["dragleave","drop"].forEach(ev=>z.addEventListener(ev,e=>{e.preventDefault();z.classList.remove("on")}));z.addEventListener("drop",e=>{const f=e.dataTransfer.files[0];if(!f)return;onImportFile({files:[f]})})}
 render();
 </script>
 </body>
