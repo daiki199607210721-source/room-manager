@@ -1,0 +1,10 @@
+---
+description: ROOM Manager domain knowledge taken from the ChatGPT-built app
+alwaysApply: true
+---
+
+ROOM Manager is a Japanese renovation estimate / job app in `index.html` (localStorage only, demo login `room` / `1234`).
+
+Do not break `calc()` / `mat()` cost formulas, Watanabe Pipe as the only wholesaler, or tax-included sales converted with `/1.1` for profit.
+
+ChatGPT account data cannot be fetched by email. Full chat history is imported only from a user-provided ChatGPT export (`conversations.json` or the export ZIP) via the AI取込 tab, converted with `chatgpt-to-claude.js`.

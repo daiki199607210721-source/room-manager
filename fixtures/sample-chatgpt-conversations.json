@@ -1,0 +1,55 @@
+[
+  {
+    "title": "ROOM Manager 見積アプリ",
+    "create_time": 1751900000,
+    "update_time": 1751901000,
+    "mapping": {
+      "root": {
+        "id": "root",
+        "parent": null,
+        "children": ["m1"],
+        "message": null
+      },
+      "m1": {
+        "id": "m1",
+        "parent": "root",
+        "children": ["m2"],
+        "message": {
+          "author": { "role": "user" },
+          "create_time": 1751900001,
+          "content": { "content_type": "text", "parts": ["リフォームの見積と案件管理アプリを作って。問屋は渡辺パイプだけ。"] }
+        }
+      },
+      "m2": {
+        "id": "m2",
+        "parent": "m1",
+        "children": [],
+        "message": {
+          "author": { "role": "assistant" },
+          "create_time": 1751900002,
+          "content": { "content_type": "text", "parts": ["ROOM Manager の静的HTMLを作成します。ログインは room / 1234 です。"] }
+        }
+      }
+    }
+  },
+  {
+    "title": "粗利率の色分け",
+    "create_time": 1751902000,
+    "mapping": {
+      "a": {
+        "message": {
+          "author": { "role": "user" },
+          "create_time": 1751902001,
+          "content": { "content_type": "text", "parts": ["粗利率が低いとき赤にして"] }
+        }
+      },
+      "b": {
+        "message": {
+          "author": { "role": "assistant" },
+          "create_time": 1751902002,
+          "content": { "content_type": "text", "parts": ["25%未満を赤、30%以上を緑にします。"] }
+        }
+      }
+    }
+  }
+]
