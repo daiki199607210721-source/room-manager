@@ -26,6 +26,8 @@ button{background:#111;color:#fff;border:0;border-radius:12px;padding:12px 16px;
 .copybox{background:#111;color:#eee;border-radius:12px;padding:12px;font-size:12px;white-space:pre-wrap;word-break:break-word;max-height:240px;overflow:auto;line-height:1.5}
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:10px 16px;border-radius:999px;z-index:30;font-size:13px}
 details.card summary{cursor:pointer;font-weight:bold;font-size:15px}details.card .notice{margin-top:10px}
+.plan-wrap{background:#fafafa;border:1px solid #eee;border-radius:12px;overflow:auto;margin-top:10px}.plan-wrap svg{width:100%;max-width:720px;height:auto;display:block}
+.job-body{white-space:pre-wrap;font-size:13px;line-height:1.65;background:#f8f8f8;border-radius:12px;padding:12px;max-height:420px;overflow:auto}
 @media(max-width:560px){.grid,.emp-grid{grid-template-columns:1fr}.tabs{grid-template-columns:repeat(3,1fr)}.kpis b{font-size:18px}}
 @media print{header,.tabs,.no-print,button{display:none!important}body{background:#fff}.card{box-shadow:none}}
 </style>
@@ -35,6 +37,7 @@ details.card summary{cursor:pointer;font-weight:bold;font-size:15px}details.card
 <script>
 const yen=n=>Math.round(Number(n||0)).toLocaleString("ja-JP")+"円";
 const num=v=>Number(v||0);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
 const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
 const load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k)) ?? d}catch(e){return d}};
 let tab="dash";
@@ -98,23 +101,263 @@ function updateMaster(k,v){master.prices[k]=num(v);save("room_master_v1",master)
 function updateMasterTop(k,v){master[k]=num(v);save("room_master_v1",master);render()}
 function exportData(){const blob=new Blob([JSON.stringify({cases,master},null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="ROOM_Manager_backup.json";a.click()}
 function dash(){const sales=cases.reduce((s,c)=>s+num(c.savedSales),0),profit=cases.reduce((s,c)=>s+num(c.savedProfit),0),admin=cases.filter(c=>c.manager==="管理者").reduce((s,c)=>s+num(c.savedProfit),0),emp=cases.filter(c=>c.manager==="従業員").reduce((s,c)=>s+num(c.savedProfit),0),max=Math.max(1,admin,emp);
- return `<div class="kpis"><div><span>今月売上</span><b>${yen(sales)}</b></div><div><span>今月粗利</span><b>${yen(profit)}</b></div><div><span>工事中</span><b>${cases.filter(c=>c.status==="工事中").length}件</b></div><div><span>完工</span><b>${cases.filter(c=>c.status==="完工").length}件</b></div></div><div class="card"><h2>担当別 今月粗利</h2><div class="barwrap"><div class="baritem"><div class="bar" style="height:${Math.max(8,admin/max*190)}px"></div><b>管理者</b><span>${yen(admin)}</span></div><div class="baritem"><div class="bar" style="height:${Math.max(8,emp/max*190)}px"></div><b>従業員</b><span>${yen(emp)}</span></div></div></div><div class="card"><h2>案件一覧</h2>${cases.length?cases.map(c=>`<div class="list"><b>${c.name}</b><span>${c.manager} / ${c.status} / 粗利 ${yen(c.savedProfit)} / ${(num(c.savedMargin)*100).toFixed(1)}%</span><button class="sub" onclick="loadCase('${c.id}')">開く</button><button class="danger" onclick="deleteCase('${c.id}')">削除</button></div>`).join(""):"<p class='notice'>まだ案件がありません。</p>"}</div>`}
+ return `<div class="kpis"><div><span>今月売上</span><b>${yen(sales)}</b></div><div><span>今月粗利</span><b>${yen(profit)}</b></div><div><span>工事中</span><b>${cases.filter(c=>c.status==="工事中").length}件</b></div><div><span>完工</span><b>${cases.filter(c=>c.status==="完工").length}件</b></div></div><div class="card no-print"><h2>AI従業員</h2><p class="notice">いまの案件「${esc(current.name)}」（${esc(current.client)}）を、営業・工程・デザイン・見積・図面の5担当が処理します。</p><button onclick="tab='office';runAll()">この案件で全員実行</button><button class="ghost" onclick="tab='office';render()">AI社員タブを開く</button></div><div class="card"><h2>担当別 今月粗利</h2><div class="barwrap"><div class="baritem"><div class="bar" style="height:${Math.max(8,admin/max*190)}px"></div><b>管理者</b><span>${yen(admin)}</span></div><div class="baritem"><div class="bar" style="height:${Math.max(8,emp/max*190)}px"></div><b>従業員</b><span>${yen(emp)}</span></div></div></div><div class="card"><h2>案件一覧</h2>${cases.length?cases.map(c=>`<div class="list"><b>${c.name}</b><span>${c.manager} / ${c.status} / 粗利 ${yen(c.savedProfit)} / ${(num(c.savedMargin)*100).toFixed(1)}%</span><button class="sub" onclick="loadCase('${c.id}')">開く</button><button class="danger" onclick="deleteCase('${c.id}')">削除</button></div>`).join(""):"<p class='notice'>まだ案件がありません。</p>"}</div>`}
 function casePage(){return `<div class="card"><h2>案件管理</h2><div class="grid">${input("id")}${input("name")}${input("client")}${select("manager",["管理者","従業員"])}${select("status",["見積中","工事中","完工","請求済","入金済"])}${input("area","number")}${input("sales","number")}${input("profitManual","number")}${textarea("memo")}</div><h3>完工写真</h3><input type="file" accept="image/*" multiple onchange="photo(this)"><div class="photos">${(current.photos||[]).map((p,i)=>`<div><img src="${p.data}"><button class="danger" onclick="removePhoto(${i})">削除</button></div>`).join("")}</div><button onclick="saveCase()">案件保存</button></div>`}
 function estimate(){const r=calc();return `<div class="kpis"><div><span>税抜売上</span><b>${yen(r.netSales)}</b></div><div><span>総原価</span><b>${yen(r.totalCost)}</b></div><div><span>粗利</span><b>${yen(r.profit)}</b></div><div><span>粗利率</span><b class="${r.margin<.25?"red":r.margin>=.3?"green":"orange"}">${(r.margin*100).toFixed(1)}%</b></div></div><div class="card"><h2>見積入力</h2><div class="grid">${select("rank",["表層","標準フルリノベ","造作・配管多め"])}${select("maker",["LIXIL","TOTO","Panasonic","Takara Standard","AICA"])}${select("ub",["1015","1116","1216","1317","1418"])}${select("kitchen",["1650","1800","2100","2400","2550"])}${select("dishwasher",["なし","あり"])}${select("vanity",["600","750","900"])}${select("toilet",["アメージュ","ベーシア","ピュアレスト"])}${select("heater",["なし","給湯器","電気温水器"])}${input("doors","number")}${select("shoeBox",["なし","あり"])}${input("closets","number")}${input("ac","number")}${input("partitionsAdd","number")}${input("partitionsRemove","number")}${input("outerFukashi","number")}${input("ceilingFukashi","number")}${input("floorRaise","number")}${select("plumbing",["なし","あり"])}${input("plumbingPoints","number")}${input("downlights","number")}${input("outlets","number")}${input("switches","number")}${select("panel",["なし","あり"])}${input("clothArea","number")}${input("floorArea","number")}${input("cfArea","number")}${input("baseboardM","number")}${input("delivery","number")}${input("parking","number")}${input("misc","number")}${input("reserveRate","number")}</div><button onclick="saveCase()">案件保存</button></div><div class="card"><h2>AI材料数量 概算</h2><table><tr><td>パーチクル材</td><td class="num">${r.mt.particle}枚</td></tr><tr><td>足</td><td class="num">${r.mt.legs}本</td></tr><tr><td>フローリング材</td><td class="num">${r.mt.flooringCases}ケース</td></tr><tr><td>木角材</td><td class="num">${r.mt.wood}本</td></tr><tr><td>コンパネ</td><td class="num">${r.mt.plywood}枚</td></tr><tr><td>ボード</td><td class="num">${r.mt.boards}枚</td></tr><tr><td>クロス</td><td class="num">${r.mt.cloth}㎡</td></tr><tr><td>巾木</td><td class="num">${r.mt.baseboard}m</td></tr></table></div><div class="card"><h2>原価内訳</h2><table><tr><th>項目</th><th class="num">金額</th></tr>${[["設備",r.equipment],["材料",r.materialCost],["内装解体",r.demolition],["木工事",r.carpentry],["電気工事",r.electric],["給排水設備",r.plumbing],["組立・取付",r.assembly],["仕上げ",r.finish],["経費",r.expense],["予備費",r.reserve],["総原価",r.totalCost]].map(x=>`<tr><td>${x[0]}</td><td class="num">${yen(x[1])}</td></tr>`).join("")}</table></div>`}
 function masterPage(){return `<div class="card"><h2>単価マスター</h2><p><span class="badge">問屋：渡辺パイプのみ</span></p><p class="notice">メーカー：LIXIL / TOTO / Panasonic / Takara Standard / AICA</p><div class="grid"><label><span>フローリング1ケース施工㎡</span><input type="number" step="0.1" value="${master.flooringCaseM2}" oninput="updateMasterTop('flooringCaseM2',this.value)"></label><label><span>パーチ1枚施工㎡</span><input type="number" step="0.01" value="${master.particleM2}" oninput="updateMasterTop('particleM2',this.value)"></label>${Object.entries({particle:"パーチクル材 1枚",leg:"足 1本",flooringCase:"フローリング 1ケース",wood:"木角材 1本",plywood:"コンパネ 1枚",board:"ボード 1枚",clothM2:"クロス材料 ㎡",baseboardM:"巾木 m",cfM2:"CF ㎡"}).map(([k,v])=>`<label><span>${v}</span><input type="number" value="${master.prices[k]}" oninput="updateMaster('${k}',this.value)"></label>`).join("")}</div><button onclick="exportData()">データ出力</button></div>`}
-function help(){return `<div class="card"><h2>使い方</h2><p class="notice">デモログイン：ID <b>room</b> / パスワード <b>1234</b></p><p class="notice">この版は端末のブラウザ内に保存されます。社員共有・本格ログインは次のFirebase版で追加します。</p><p class="notice">AI従業員は <b>チーム</b> フォルダです。Cursor または Claude Code でこのリポジトリを開き、担当を指名して仕事を頼んでください。手順は <b>docs/AI従業員セットアップ.md</b> にあります。</p></div>`}
+function help(){return `<div class="card"><h2>使い方</h2><p class="notice">デモログイン：ID <b>room</b> / パスワード <b>1234</b></p><p class="notice">この版は端末のブラウザ内に保存されます。社員共有・本格ログインは次のFirebase版で追加します。</p><p class="notice">AI社員タブで、いまの案件を営業・工程・デザイン・見積・図面の5担当が処理します。手書き図面の内容は各カードの「参考メモ」に書いてから実行してください。成果物はブラウザに保存され、ファイルとしてもダウンロードできます。</p></div>`}
 const teams=[
-  {emoji:"📨",name:"営業",color:"#1565c0",path:"チーム/営業",skills:["仲介会社PR","案件獲得"],blurb:"不動産仲介会社へ送るPRメールと、案件化までの文面を作ります。",ask:"営業として、不動産仲介会社向けのPRメールを書いて。成果物は チーム/営業/成果物 に保存して。価格と工期は断定しないで。"},
-  {emoji:"📅",name:"工程管理",color:"#2e7d32",path:"チーム/工程管理",skills:["工程組み","提出用ファイル"],blurb:"工程を整理し、従業員が協力業者へ出せる工程表を作ります。",ask:"工程管理として、従業員に提出できる工程表を チーム/工程管理/成果物 に作って。着工日が無い日程は仮と書いて。"},
-  {emoji:"🎨",name:"デザイナー",color:"#6a1b9a",path:"チーム/デザイナー",skills:["住設備","クロス・床","カラー"],blurb:"住設備とクロス、床材、デザイン、カラーの選定提案を出します。",ask:"デザイナーとして、住設備・クロス・床材のカラー提案を チーム/デザイナー/成果物 に出して。無い品番は作らないで。"},
-  {emoji:"📐",name:"見積作成",color:"#ef6c00",path:"チーム/見積作成",skills:["手書き拾い","見積"],blurb:"手書き図面の文字を拾い、見積とROOM Manager用の入力値を作ります。",ask:"見積作成として、チーム/見積作成/参考資料 の手書き図面から文字を拾い、見積を チーム/見積作成/成果物 に作って。読めない文字は確認事項にして。"},
-  {emoji:"✏️",name:"設計士",color:"#37474f",path:"チーム/設計士",skills:["間取り図","電気図","平面図"],blurb:"2Dの間取り図、電気図、平面図を作ります。",ask:"設計士として、2Dの間取り図と電気図と平面図を チーム/設計士/成果物 に出して。図に無い寸法は描き足さないで。"}
+  {id:"sales",emoji:"📨",name:"営業",color:"#1565c0",path:"チーム/営業",skills:["仲介会社PR","案件獲得"],blurb:"不動産仲介会社へ送るPRメールと、案件化までの文面を作ります。"},
+  {id:"process",emoji:"📅",name:"工程管理",color:"#2e7d32",path:"チーム/工程管理",skills:["工程組み","提出用ファイル"],blurb:"工程を整理し、従業員が協力業者へ出せる工程表を作ります。"},
+  {id:"designer",emoji:"🎨",name:"デザイナー",color:"#6a1b9a",path:"チーム/デザイナー",skills:["住設備","クロス・床","カラー"],blurb:"住設備とクロス、床材、デザイン、カラーの選定提案を出します。"},
+  {id:"estimator",emoji:"📐",name:"見積作成",color:"#ef6c00",path:"チーム/見積作成",skills:["手書き拾い","見積"],blurb:"案件入力と参考メモから拾い出しと見積を作ります。"},
+  {id:"drafter",emoji:"✏️",name:"設計士",color:"#37474f",path:"チーム/設計士",skills:["間取り図","電気図","平面図"],blurb:"2Dの間取り図、電気図、平面図の案を作ります。"}
 ];
-let lastAsk="";
-function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]))}
+let ai=load("room_ai_v1",{refs:{},jobs:[]});
+let lastJob=null;
 function toast(m){const el=document.createElement("div");el.className="toast";el.textContent=m;document.body.appendChild(el);setTimeout(()=>el.remove(),1800)}
-function copyAsk(t){lastAsk=t;const show=ok=>{render();toast(ok?"コピーしました。下の文を Cursor か Claude Code に貼ってください。":"下の依頼文を選択してコピーしてください")};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(()=>show(true)).catch(()=>show(false))}else show(false)}
-function office(){return `<div class="card"><h2>株式会社ROOM の AI従業員</h2><p class="notice">マンション専有部のリフォームを、営業・工程・デザイン・見積・図面で分業します。原紙は各フォルダの <b>参考資料</b>、提出物は <b>成果物</b> です。Cursor または Claude Code で担当を指名してください。</p></div><div class="emp-grid">${teams.map(t=>`<div class="emp-card" style="border-left-color:${t.color}"><div class="emp-top"><div class="avatar" style="background:${t.color}">${t.emoji}</div><div><h3>${t.name}</h3><div class="role">${t.path}</div></div></div><p class="notice">${t.blurb}</p><div class="chips">${t.skills.map(s=>`<span class="chip">${s}</span>`).join("")}<span class="chip">参考資料</span><span class="chip">成果物</span></div><button class="sub" onclick='copyAsk(${JSON.stringify(t.ask)})'>依頼文をコピー</button></div>`).join("")}</div>${lastAsk?`<div class="card"><h2>Cursor / Claude Code へ貼る文</h2><div class="copybox">${esc(lastAsk)}</div></div>`:""}<details class="card"><summary>パソコンでの動かし方</summary><p class="notice">1. 手書き図面や仲介会社リストを、担当の <b>参考資料</b> に置く<br>2. Cursor でこのフォルダを開くか、ターミナルで <b>claude</b> を起動する<br>3. 上の「依頼文をコピー」を押し、下の文を貼る。必要なら物件名を足す<br>4. できたファイルは担当の <b>成果物</b> を見る</p><p class="notice">詳しい手順は docs/AI従業員セットアップ.md と、各担当フォルダの CLAUDE.md にあります。</p></details>`}
+function ymd(){const d=new Date(),z=n=>String(n).padStart(2,"0");return d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())}
+function fileSafe(s){return String(s||"案件").replace(/[\\/:*?"<>|]/g,"_").slice(0,40)}
+function refsOf(id){return ai.refs[id]||[]}
+function refBlock(id){const list=refsOf(id);return list.length?list.map(x=>`- ${x.at} ${x.name}：${x.text}`).join("\n"):"（参考メモなし。案件タブ・見積タブの入力を使用）"}
+function pct(m){return (num(m)*100).toFixed(1)+"%"}
+function genSales(){const client=current.client||"不動産会社", name=current.name||"ご物件";
+ const body=`# ${ymd()}_${fileSafe(client)}_PRメール
+
+件名：マンション専有部のリノベ、仕入れから引渡しまで一括でお任せください（株式会社ROOM）
+
+宛先：${client}
+担当名：（確認事項：担当者名が参考メモにありません）
+
+${client} ご担当者様
+
+お世話になっております。株式会社ROOMです。
+関東のマンション専有部について、内装リフォームからフルリノベーションまで、見積・工程・品質・予算・引渡しを一括で管理しております。自社職人を抱える施工会社ではなく、協力業者を手配する元請として、年間100件以上の施工に対応しています。
+
+【お任せいただける範囲】
+・フルリノベーション、間取り変更、和室から洋室
+・キッチン・浴室・洗面・トイレ交換
+・内装解体、原状回復、表層リフォーム
+・給排水・電気工事、床・壁・天井の仕上げ
+・完工写真、間取り図などの資料提供
+
+現在、${name}（${current.status||"見積中"}）のご相談をいただいております。金額と工期は、現地と図面の確認後に見積作成・工程管理からお出しします。このメールでは断定しません。
+
+次の一歩：15分の電話、または現地調査の候補日を2つご指定ください。図面または専有部のコピーをいただければ、概算の準備に入ります。
+
+株式会社ROOM
+（電話・住所は参考資料にあるものだけを使う。未登録のためここには書いていません）
+
+送信前チェック
+- 自社職人とは書いていない
+- 最安・絶対などの誇張なし
+- 価格・工期の断定なし
+- 出典：案件 ${current.id} / 参考メモ
+${refBlock("sales")}
+`;
+ return {title:`${client} 向けPRメール`,filename:`${ymd()}_${fileSafe(client)}_PRメール.md`,body,html:""}}
+function genProcess(){
+ const days=current.rank==="表層"?[["1","事前：管理届・搬入経路確認","事務","仮"],["2-3","表層解体・養生","解体","仮"],["4-5","電気・水道の最小範囲","電気/水道","仮"],["6-8","床・クロス・設備交換","内装/設備","仮"],["9","器具付け・清掃・手直し","各社","仮"],["10","完工写真・引渡し","現場監督","仮"]]:[["1","事前：管理組合届、搬入、残置確認","事務","仮"],["2-3","内装解体・撤去","解体","仮"],["4","間仕切り増設"+num(current.partitionsAdd)+"／撤去"+num(current.partitionsRemove),"造作","仮"],["5-6","給排水移設（"+ (current.plumbing==="あり"?"あり":"なし") +"）","水道","仮"],["7-8","電気配線、ダウンライト"+num(current.downlights)+"、コンセント"+num(current.outlets),"電気","仮"],["9","床下地（パーチクル・脚・床上げ）","床","仮"],["10","ボード・クロス下地","内装","仮"],["11","UB"+current.ub+"、キッチン"+current.kitchen+"、洗面、トイレ搬入組立","設備","仮"],["12","床仕上げ・巾木・CF・クロス・建具","内装","仮"],["13","エアコン"+num(current.ac)+"、器具付け、試運転","電気/設備","仮"],["14","清掃、手直し、完工写真、引渡し","現場監督","仮"]];
+ const table=["| 日（仮） | 工事内容 | 職種 | 先行条件 |","| --- | --- | --- | --- |",...days.map(d=>`| ${d[0]} | ${d[1]} | ${d[2]} | ${d[3]} |`)].join("\n");
+ const body=`# ${ymd()}_${fileSafe(current.name)}_工程表
+
+案件：${current.name}（${current.id}）
+工事ランク：${current.rank}
+着工日：未入力のため日程はすべて【仮】
+提出先：社長の従業員 → 協力業者
+
+${table}
+
+## 提出用メモ
+- マンション専有部。エレベーター搬入時間と養生範囲は管理組合へ確認（未確認）
+- 騒音時間、水止め日は管理規約が参考メモにないため未記入
+- 給排水移設：${current.plumbing} / 水回り移設点数 ${num(current.plumbingPoints)}
+- 住設メーカー：${current.maker}
+- 日曜日施工の可否は書いていません
+
+## 確認事項
+- 着工希望日、引渡し希望日
+- 搬入経路、駐車、残置物
+- 管理組合の届出済みか
+
+参考メモ
+${refBlock("process")}
+`;
+ return {title:`${current.name} の工程表（仮）`,filename:`${ymd()}_${fileSafe(current.name)}_工程表.md`,body,html:""}}
+function genDesigner(){
+ const body=`# ${ymd()}_${fileSafe(current.name)}_内装提案
+
+案件：${current.name} / ${current.client}
+対象：マンション専有部 ${num(current.area)}㎡
+メーカー指定：${current.maker}（問屋：渡辺パイプ）
+品番はカタログ未添付のため「候補（要確認）」です。存在しない品番は書いていません。
+
+## コンセプト
+仲介会社が内見写真で出しやすい、明るく中立な仕上げ。水回りは指定メーカーの標準グレード。和室から洋室の名残は、床とクロスのトーンを揃えて消します。
+
+## A案（無難）
+- ベース：オフホワイト壁、天井白
+- メイン：オーク系の床（フローリング ${num(current.floorArea)}㎡、CF ${num(current.cfArea)}㎡）
+- アクセント：玄関収納まわりにグレーの巾木
+- クロス：${num(current.clothArea)}㎡、白〜ごく薄いベージュ（品番 要確認）
+- 床：${current.maker==="LIXIL"?"LIXIL系フローリングの中立色":current.maker+" の床材"}（品番 要確認）
+
+## B案（少し個性）
+- ベース：暖かいアイボリー壁
+- メイン：少しグレイッシュな床
+- アクセント：トイレまたは洗面の一面だけ、控えめな柄クロス（品番 要確認）
+- 建具は既存枠色が未確認のため、枠色を見てから決める
+
+## 住設備
+- UB ${current.ub} / ${current.maker}
+- キッチン ${current.kitchen}、食洗機 ${current.dishwasher}
+- 洗面 ${current.vanity}、トイレ ${current.toilet}、給湯 ${current.heater}
+- 玄関収納 ${current.shoeBox}、クローゼット ${num(current.closets)}、エアコン ${num(current.ac)}台
+代替：メーカー変更は見積の加算が変わるため、見積作成へ確認。
+
+## 避けた方がよい組合せ
+- 暗い床＋暗いクロス（内見写真が沈む）
+- 枠色未確認のまま建具だけ先に決める
+
+## 確認事項
+- 既存枠・玄関ドアの色
+- 管理規約の床厚・遮音
+- お客様の好み（参考メモになければ未確認）
+
+参考メモ
+${refBlock("designer")}
+`;
+ return {title:`${current.name} の内装提案`,filename:`${ymd()}_${fileSafe(current.name)}_内装提案.md`,body,html:""}}
+function genEstimate(){
+ const r=calc(), c=current, mt=r.mt;
+ const warn=r.margin<0.25?"結論：要見直し。粗利率が25%を下回っています。売価を上げるか、仕様を落とすか、予備費・搬入を見直してください。":r.margin>=0.3?"結論：粗利率30%以上。この条件なら受注して問題ありません。":"結論：粗利率は注意ゾーンです。予備費と搬入費を確認してください。";
+ const body=`# ${ymd()}_${fileSafe(c.name)}_見積
+
+案件：${c.name}（${c.id}） / ${c.client}
+出典：見積タブの入力を図面拾いとして使用。手書き図面写真が無い項目は「入力値」と書いた。
+
+## 拾い出し（読めた／入力済み）
+- 面積 ${num(c.area)}㎡、工事ランク ${c.rank}、メーカー ${c.maker}
+- UB ${c.ub}、キッチン ${c.kitchen}、食洗機 ${c.dishwasher}、洗面 ${c.vanity}、トイレ ${c.toilet}、給湯 ${c.heater}
+- 建具 ${num(c.doors)}枚、玄関収納 ${c.shoeBox}、クローゼット ${num(c.closets)}、エアコン ${num(c.ac)}台
+- 間仕切り増設 ${num(c.partitionsAdd)}、撤去 ${num(c.partitionsRemove)}、外周ふかし ${num(c.outerFukashi)}m、天井ふかし ${num(c.ceilingFukashi)}㎡、床上げ ${num(c.floorRaise)}㎡
+- 給排水移設 ${c.plumbing}（${num(c.plumbingPoints)}点）、ダウンライト ${num(c.downlights)}、コンセント ${num(c.outlets)}、スイッチ ${num(c.switches)}、分電盤 ${c.panel}
+- クロス ${num(c.clothArea)}㎡、床 ${num(c.floorArea)}㎡、CF ${num(c.cfArea)}㎡、巾木 ${num(c.baseboardM)}m
+
+## 読めない／未確認
+- 手書き図面の実寸（壁芯か内法か）
+- 構造壁の可否、既存枠色、管理規約
+${c.memo?`- 案件メモ：${c.memo}`:""}
+
+## 材料数量（mat）
+パーチクル ${mt.particle}枚 / 足 ${mt.legs}本 / フローリング ${mt.flooringCases}ケース / 木角 ${mt.wood}本 / コンパネ ${mt.plywood}枚 / ボード ${mt.boards}枚 / クロス ${mt.cloth}㎡ / 巾木 ${mt.baseboard}m
+
+## 見積（ROOM Manager の calc）
+- 税込売価 ${yen(c.sales)}
+- 税抜売上 ${yen(r.netSales)}
+- 総原価 ${yen(r.totalCost)}（予備費 ${yen(r.reserve)} を含む）
+- 粗利 ${yen(r.profit)}
+- 粗利率 ${pct(r.margin)}
+
+| 項目 | 金額 |
+| --- | ---: |
+| 設備 | ${yen(r.equipment)} |
+| 材料 | ${yen(r.materialCost)} |
+| 内装解体 | ${yen(r.demolition)} |
+| 木工事 | ${yen(r.carpentry)} |
+| 電気工事 | ${yen(r.electric)} |
+| 給排水設備 | ${yen(r.plumbing)} |
+| 組立・取付 | ${yen(r.assembly)} |
+| 仕上げ | ${yen(r.finish)} |
+| 経費 | ${yen(r.expense)} |
+| 予備費 | ${yen(r.reserve)} |
+| 総原価 | ${yen(r.totalCost)} |
+
+${warn}
+
+効いている原価トップは設備・材料・木工事を優先して見てください。
+改善案：売価を税込で上げる、タカラ等のメーカー加算を避ける、間仕切り・移設点数を減らす、予備費と搬入の重複を確認する。
+
+参考メモ
+${refBlock("estimator")}
+`;
+ return {title:`${c.name} の拾い出しと見積`,filename:`${ymd()}_${fileSafe(c.name)}_見積.md`,body,html:""}}
+function planSvg(){
+ const dl=Math.min(12,Math.max(1,num(current.downlights)||4));
+ let lights="";
+ for(let i=0;i<dl;i++){const col=i%4, row=Math.floor(i/4); lights+=`<circle cx="${290+col*90}" cy="${80+row*55}" r="7" fill="#f6e27a" stroke="#111"/><text x="${290+col*90}" y="${98+row*55}" font-size="9" text-anchor="middle">DL</text>`}
+ return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 520" font-family="sans-serif">
+<rect x="24" y="24" width="672" height="472" fill="#fff" stroke="#111" stroke-width="3"/>
+<rect x="40" y="40" width="210" height="190" fill="#f4f5f7" stroke="#111"/><text x="145" y="135" text-anchor="middle" font-size="14">洋室</text><text x="145" y="155" text-anchor="middle" font-size="10">寸法 未実測</text>
+<rect x="40" y="230" width="210" height="70" fill="#eceff1" stroke="#111"/><text x="145" y="270" text-anchor="middle" font-size="13">CL ×${num(current.closets)||1}</text>
+<rect x="250" y="40" width="430" height="260" fill="#fafafa" stroke="#111"/><text x="465" y="70" text-anchor="middle" font-size="16">LDK</text><text x="465" y="90" text-anchor="middle" font-size="10">専有部 ${num(current.area)}㎡（部屋割は案）</text>
+<rect x="250" y="250" width="430" height="50" fill="#eceff1" stroke="#111"/><text x="465" y="280" text-anchor="middle" font-size="13">キッチン ${current.kitchen}</text>
+<rect x="40" y="310" width="120" height="100" fill="#e3f2fd" stroke="#111"/><text x="100" y="365" text-anchor="middle" font-size="13">UB ${current.ub}</text>
+<rect x="160" y="310" width="90" height="100" fill="#e8f5e9" stroke="#111"/><text x="205" y="365" text-anchor="middle" font-size="12">洗面 ${current.vanity}</text>
+<rect x="250" y="310" width="90" height="100" fill="#fff8e1" stroke="#111"/><text x="295" y="365" text-anchor="middle" font-size="12">トイレ</text>
+<rect x="340" y="310" width="90" height="100" fill="#f4f5f7" stroke="#111" stroke-dasharray="6 4"/><text x="385" y="358" text-anchor="middle" font-size="11">廊下</text><text x="385" y="374" text-anchor="middle" font-size="10">撤去破線=未確定</text>
+<rect x="430" y="420" width="200" height="60" fill="#f4f5f7" stroke="#111"/><text x="530" y="455" text-anchor="middle" font-size="13">玄関 ${current.shoeBox==="あり"?"収納あり":""}</text>
+${lights}
+<rect x="620" y="60" width="40" height="24" fill="#fff" stroke="#111"/><text x="640" y="76" text-anchor="middle" font-size="9">AC</text>
+<rect x="270" y="55" width="40" height="24" fill="#fff" stroke="#111"/><text x="290" y="71" text-anchor="middle" font-size="9">AC</text>
+<text x="36" y="490" font-size="11">内法/壁芯：未確認。図に無い壁は足していない。コンセント${num(current.outlets)}・スイッチ${num(current.switches)}・分電盤${current.panel}は位置未実測。</text>
+</svg>`}
+function genDrafter(){
+ const svg=planSvg();
+ const body=`# ${ymd()}_${fileSafe(current.name)}_図面
+
+案件：${current.name}（${current.id}）
+種類：2D間取り図 / 平面図 / 電気図（同一案）
+寸法：専有部 ${num(current.area)}㎡のみ確定。各室寸法は未実測のため描き込んでいない。
+凡例：実線＝残す壁、破線＝間仕切り変更の可能性（未確定）、DL＝ダウンライト案、AC＝エアコン${num(current.ac)}台
+
+## 間取り図・平面図
+アプリ上の図を正とする。部屋名はマンション専有部の一般的な1LDK案。手書きに無い開口は新設していない。
+
+## 電気図
+- ダウンライト ${num(current.downlights)}（LDKに均等配置した案。回路未割当）
+- コンセント増設 ${num(current.outlets)}（位置 未実測）
+- スイッチ増設 ${num(current.switches)}（位置 未実測）
+- 分電盤交換 ${current.panel}（既存位置 未確認）
+- 容量計算はしていない
+
+## 確認事項
+- 壁芯か内法か
+- 構造壁、窓の位置、北
+- 管理規約上の床・開口
+
+参考メモ
+${refBlock("drafter")}
+`;
+ return {title:`${current.name} の間取り図・電気図`,filename:`${ymd()}_${fileSafe(current.name)}_図面.md`,body,html:`<div class="plan-wrap">${svg}</div>`}}
+const generators={sales:genSales,process:genProcess,designer:genDesigner,estimator:genEstimate,drafter:genDrafter};
+function persistAi(){save("room_ai_v1",ai)}
+function runTeam(id,silent){
+ const t=teams.find(x=>x.id===id), out=generators[id]();
+ const job={id:"JOB-"+Date.now()+"-"+id,teamId:id,teamName:t.name,title:out.title,filename:out.filename,body:out.body,html:out.html||"",at:new Date().toLocaleString("ja-JP"),caseId:current.id,caseName:current.name};
+ ai.jobs=[job,...ai.jobs.filter(j=>!(j.teamId===id&&j.caseId===current.id))].slice(0,80);
+ persistAi(); lastJob=job;
+ if(!silent){tab="office";render();toast(t.name+"が成果物を作りました")}
+ return job;
+}
+function runAll(){teams.forEach(t=>runTeam(t.id,true));lastJob=ai.jobs.find(j=>j.teamId==="estimator")||ai.jobs[0];tab="office";render();toast("5担当が成果物を作りました")}
+function viewJob(id){lastJob=ai.jobs.find(j=>j.id===id)||lastJob;render()}
+function delJob(id){ai.jobs=ai.jobs.filter(j=>j.id!==id);if(lastJob&&lastJob.id===id)lastJob=ai.jobs[0]||null;persistAi();render()}
+function dlJob(id){const j=ai.jobs.find(x=>x.id===id);if(!j)return;const blob=new Blob([j.body+(j.html?"\n":"")],{type:"text/markdown"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=j.filename;a.click()}
+function copyJob(id){const j=ai.jobs.find(x=>x.id===id);if(!j)return;const t=j.body;const ok=()=>toast("成果物をコピーしました");if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(ok).catch(()=>toast("下の文を選択してコピーしてください"));else toast("下の文を選択してコピーしてください")}
+function addRef(id){const t=prompt("参考資料メモ（手書き図面の文字、仲介の要望、管理規約など）");if(!t||!t.trim())return;ai.refs[id]=[{id:"R"+Date.now(),name:"メモ",text:t.trim(),at:new Date().toLocaleString("ja-JP")},...refsOf(id)].slice(0,30);persistAi();render();toast("参考資料に追加しました")}
+function delRef(tid,rid){ai.refs[tid]=refsOf(tid).filter(x=>x.id!==rid);persistAi();render()}
+function office(){
+ const r=calc();
+ const job=lastJob||ai.jobs[0]||null;
+ const jobs=ai.jobs.filter(j=>j.caseId===current.id);
+ return `<div class="kpis"><div><span>いまの案件</span><b>${esc(current.name)}</b></div><div><span>取引先</span><b>${esc(current.client)}</b></div><div><span>税込売価</span><b>${yen(current.sales)}</b></div><div><span>粗利率</span><b class="${r.margin<.25?"red":r.margin>=.3?"green":"orange"}">${pct(r.margin)}</b></div></div>
+<div class="card"><h2>株式会社ROOM の AI従業員</h2><p class="notice">案件タブ・見積タブの内容と、各担当の参考メモを使って成果物を作ります。元請として、自社職人があるようには書きません。</p><button onclick="runAll()">この案件で全員実行</button></div>
+<div class="emp-grid">${teams.map(t=>`<div class="emp-card" style="border-left-color:${t.color}"><div class="emp-top"><div class="avatar" style="background:${t.color}">${t.emoji}</div><div><h3>${t.name}</h3><div class="role">${t.path} ／ メモ ${refsOf(t.id).length}件</div></div></div><p class="notice">${t.blurb}</p><div class="chips">${t.skills.map(s=>`<span class="chip">${s}</span>`).join("")}<span class="chip">参考資料</span><span class="chip">成果物</span></div><button onclick="runTeam('${t.id}')">この案件で実行</button><button class="ghost" onclick="addRef('${t.id}')">参考メモ</button>${refsOf(t.id).slice(0,2).map(x=>`<div class="list"><span>${esc(x.text)}</span><button class="danger" onclick="delRef('${t.id}','${x.id}')">削除</button></div>`).join("")}</div>`).join("")}</div>
+<div class="card"><h2>この案件の成果物</h2>${jobs.length?jobs.map(j=>`<div class="list"><b>${esc(j.teamName)} / ${esc(j.title)}</b><span>${esc(j.at)} ／ ${esc(j.filename)}</span><button class="sub" onclick="viewJob('${j.id}')">開く</button><button class="ghost" onclick="dlJob('${j.id}')">ダウンロード</button><button class="ghost" onclick="copyJob('${j.id}')">コピー</button><button class="danger" onclick="delJob('${j.id}')">削除</button></div>`).join(""):"<p class='notice'>まだ成果物がありません。上の「全員実行」を押してください。</p>"}</div>
+${job?`<div class="card"><h2>${esc(job.teamName)}の成果物</h2><p class="notice">${esc(job.filename)} ／ ${esc(job.at)}</p>${job.html||""}<div class="job-body">${esc(job.body)}</div><button class="ghost" onclick="dlJob('${job.id}')">ファイル保存</button><button class="ghost" onclick="copyJob('${job.id}')">コピー</button></div>`:""}
+<details class="card"><summary>フォルダと Cursor / Claude Code</summary><p class="notice">同じ成果物の置き場は <b>チーム／担当／成果物</b> です。手書き図面の写真は <b>参考資料</b> に置いてから、この画面で実行しても、Cursor で担当を指名しても構いません。</p></details>`}
+
 function render(){const app=document.getElementById("app");if(!localStorage.getItem("room_login")){app.innerHTML=`<div class="login"><div class="card"><h2>ROOM Manager</h2><label><span>ID</span><input id="loginId" value="room"></label><label><span>パスワード</span><input id="loginPw" type="password" value="1234"></label><button onclick="login()">ログイン</button><p class="notice">デモ版：ID room / PW 1234</p></div></div>`;return}const body=tab==="dash"?dash():tab==="case"?casePage():tab==="estimate"?estimate():tab==="master"?masterPage():tab==="office"?office():help();app.innerHTML=`<header><b>ROOM Manager</b><small onclick="logout()">ログアウト</small></header><div class="tabs">${[["dash","ダッシュ"],["case","案件"],["estimate","見積"],["master","単価"],["office","AI社員"],["help","使い方"]].map(([k,v])=>`<button class="${tab===k?"on":""}" onclick="tab='${k}';render()">${v}</button>`).join("")}</div><div class="wrap">${body}</div>`}
 render();
 </script>
